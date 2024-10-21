@@ -1,0 +1,513 @@
+
+
+--- Contenido de app/main.py ---
+
+from fastapi import FastAPI
+from app.core.config import settings
+from app.api.endpoints import auth
+from app.core.app_config import setup_app_config
+from app.core.error_handling import global_exception_handler, AppException
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION)
+
+setup_app_config(app)
+
+# Registrar el manejador de excepciones global
+app.add_exception_handler(AppException, global_exception_handler)
+app.add_exception_handler(StarletteHTTPException, global_exception_handler)
+app.add_exception_handler(RequestValidationError, global_exception_handler)
+app.add_exception_handler(Exception, global_exception_handler)
+
+app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/authentication", tags=["auth"])
+
+
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
+
+--- Contenido de app/api\endpoints\auth.py ---
+
+from fastapi import APIRouter, Depends, Response, status
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
+from app.core.config import settings
+from app.core.database import get_db
+from app.schemas.auth import TokenRespuesta, UsuarioRespuesta
+from app.core.auth import create_access_token, get_current_user, authenticate_user
+from app.core.error_handling import AppException
+from datetime import timedelta
+
+router = APIRouter()
+
+@router.post("/login", response_model=TokenRespuesta)
+async def login_for_access_token(
+    response: Response,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    user = authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        raise AppException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Credenciales incorrectas"
+        )
+    if not user.esta_activo:
+        raise AppException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuario inactivo"
+        )
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.nombre_usuario}, expires_delta=access_token_expires
+    )
+    
+    response.set_cookie(
+        key="access_token",
+        value=f"Bearer {access_token}",
+        httponly=True,
+        max_age=1800,
+        expires=1800,
+        samesite='lax',
+        secure=False  # Set to True in production with HTTPS
+    )
+    
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@router.post("/logout")
+async def logout(response: Response):
+    response.delete_cookie(key="access_token")
+    return {"message": "Sesión cerrada exitosamente"}
+
+@router.get("/me", response_model=UsuarioRespuesta)
+async def read_users_me(current_user: UsuarioRespuesta = Depends(get_current_user)):
+    return current_user
+
+--- Contenido de app/core\app_config.py ---
+
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
+
+def setup_cors(app):
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:5173"],  # Ajusta esto según tus necesidades
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+def custom_openapi(app):
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title="Tu API",
+        version="1.0.0",
+        description="Descripción de tu API",
+        routes=app.routes,
+    )
+    openapi_schema["components"]["securitySchemes"] = {
+        "Bearer Auth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+        }
+    }
+    
+    for path in openapi_schema["paths"]:
+        for method in openapi_schema["paths"][path]:
+            if openapi_schema["paths"][path][method].get("operationId") not in ["login_for_access_token", "root"]:
+                openapi_schema["paths"][path][method]["security"] = [{"Bearer Auth": []}]
+    
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+def setup_app_config(app):
+    setup_cors(app)
+    app.openapi = lambda: custom_openapi(app)
+
+--- Contenido de app/core\auth.py ---
+
+from datetime import datetime, timedelta
+from typing import Optional
+
+from fastapi import Depends, HTTPException, status, Request
+from jose import JWTError, jwt
+from sqlalchemy.orm import Session
+
+from app.core.config import settings
+from app.core.security import verify_password
+from app.crud import crud_auth
+from app.core.database import get_db
+from app.schemas.auth import TokenPayload, UsuarioRespuesta, RolRespuesta, PermisoRespuesta
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return encoded_jwt
+
+async def get_current_user(request: Request, db: Session = Depends(get_db)) -> UsuarioRespuesta:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    token = await get_token_from_request(request)
+    if not token:
+        raise credentials_exception
+    
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        nombre_usuario: str = payload.get("sub")
+        if nombre_usuario is None:
+            raise credentials_exception
+        token_data = TokenPayload(nombre_usuario=nombre_usuario)
+    except JWTError:
+        raise credentials_exception
+    user = crud_auth.get_by_nombre_usuario(db, nombre_usuario=token_data.nombre_usuario)
+    if user is None:
+        raise credentials_exception
+    
+    rol = user.rol
+    return UsuarioRespuesta(
+        id=user.id,
+        nombre_usuario=user.nombre_usuario,
+        esta_activo=user.esta_activo,
+        es_superusuario=user.es_superusuario,
+        nombre=user.persona.nombre,
+        apellido=user.persona.apellido,
+        fecha_nacimiento=user.persona.fecha_nacimiento,
+        email=user.persona.email,
+        rol=RolRespuesta(
+            id=rol.id,
+            nombre=rol.nombre,
+            descripcion=rol.descripcion,
+            permisos=[PermisoRespuesta(
+                id=permiso.id,
+                nombre=permiso.nombre,
+                descripcion=permiso.descripcion
+            ) for permiso in rol.permisos]
+        ) if rol else None
+    )
+
+def authenticate_user(db: Session, username: str, password: str):
+    user = crud_auth.get_by_nombre_usuario(db, nombre_usuario=username)
+    if not user:
+        return False
+    if not verify_password(password, user.hash_contrasena):
+        return False
+    return user
+
+async def get_token_from_request(request: Request) -> str | None:
+    token = request.cookies.get("access_token")
+    if token and token.startswith("Bearer "):
+        return token.split("Bearer ")[1]
+    return token
+
+--- Contenido de app/core\config.py ---
+
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+    PROJECT_NAME: str = "Tu API"
+    VERSION: str = "0.1.0"
+    DATABASE_URL: str = "postgresql://postgres:admin@localhost/postgres"
+    API_V1_STR: str = "/api/v1"
+    SECRET_KEY: str = "YOUR_SECRET_KEY_HERE"  # Cambia esto por una clave secreta real
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
+    class Config:
+        env_file = ".env"
+
+settings = Settings()
+
+--- Contenido de app/core\database.py ---
+
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from .config import settings
+
+engine = create_engine(settings.DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
+
+# Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+--- Contenido de app/core\error_handling.py ---
+
+from fastapi import Request, status
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from typing import Union, Dict, Any
+
+class AppException(Exception):
+    def __init__(self, status_code: int, detail: str):
+        self.status_code = status_code
+        self.detail = detail
+
+def create_error_response(status_code: int, detail: Union[str, Dict[str, Any]]) -> Dict[str, Any]:
+    return {
+        "error": {
+            "status_code": status_code,
+            "detail": detail
+        }
+    }
+
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    if isinstance(exc, AppException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=create_error_response(exc.status_code, exc.detail)
+        )
+    elif isinstance(exc, StarletteHTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=create_error_response(exc.status_code, exc.detail)
+        )
+    elif isinstance(exc, RequestValidationError):
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content=create_error_response(status.HTTP_422_UNPROCESSABLE_ENTITY, exc.errors())
+        )
+    else:
+        # Para excepciones no manejadas, devolver un error 500
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=create_error_response(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "Se ha producido un error interno del servidor"
+            )
+        )
+
+--- Contenido de app/core\permissions.py ---
+
+from functools import wraps
+from fastapi import HTTPException, Depends
+from app.core.auth import get_current_user
+from app.schemas.auth import UsuarioRespuesta
+
+def require_permissions(*required_permissions):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, current_user: UsuarioRespuesta = Depends(get_current_user), **kwargs):
+            if current_user.es_superusuario:
+                return await func(*args, current_user=current_user, **kwargs)
+            
+            user_permissions = set(permiso.nombre for permiso in current_user.rol.permisos)
+            
+            if not set(required_permissions).issubset(user_permissions):
+                raise HTTPException(status_code=403, detail="No tienes permisos suficientes para realizar esta acción")
+            
+            return await func(*args, current_user=current_user, **kwargs)
+        return wrapper
+    return decorator
+
+--- Contenido de app/core\security.py ---
+
+from datetime import datetime, timedelta, timezone
+from typing import Any, Union
+
+from jose import jwt
+from passlib.context import CryptContext
+
+from app.core.config import settings
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def create_access_token(subject: Union[str, Any], expires_delta: timedelta = None) -> str:
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode = {"exp": expire, "sub": str(subject)}
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return encoded_jwt
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+--- Contenido de app/crud\crud_auth.py ---
+
+from sqlalchemy.orm import Session
+from app.models.usuario import Usuario
+
+
+def get_by_nombre_usuario(db: Session, nombre_usuario: str) -> Usuario:
+        return db.query(Usuario).filter(Usuario.nombre_usuario == nombre_usuario).first()
+
+--- Contenido de app/models\auditable.py ---
+
+from sqlalchemy import Column, Integer, DateTime
+from sqlalchemy.sql import func
+
+class Auditable:
+    creado_en = Column(DateTime(timezone=True), server_default=func.now())
+    creado_por = Column(Integer, nullable=True)
+    actualizado_en = Column(DateTime(timezone=True), onupdate=func.now())
+    actualizado_por = Column(Integer, nullable=True)
+    eliminado_en = Column(DateTime(timezone=True), nullable=True)  # Cambiado de Integer a DateTime
+    eliminado_por = Column(Integer, nullable=True)
+
+--- Contenido de app/models\permiso.py ---
+
+from sqlalchemy import Column, Integer, String, Text
+from sqlalchemy.orm import relationship
+from app.core.database import Base
+from app.models.auditable import Auditable
+
+class Permiso(Base, Auditable):
+    __tablename__ = "permiso"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(50), unique=True, index=True)
+    descripcion = Column(Text)
+
+    roles = relationship("Rol", secondary="rol_permiso", back_populates="permisos")
+
+--- Contenido de app/models\persona.py ---
+
+from sqlalchemy import Column, Integer, String, Date
+from sqlalchemy.orm import relationship
+from app.core.database import Base
+from app.models.auditable import Auditable
+
+class Persona(Base, Auditable):
+    __tablename__ = "persona"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String, index=True)
+    apellido = Column(String, index=True)
+    fecha_nacimiento = Column(Date)
+    email = Column(String, unique=True, index=True)
+    
+    # Relación con Usuario
+    usuario = relationship("Usuario", back_populates="persona", uselist=False)
+
+
+
+--- Contenido de app/models\rol.py ---
+
+from sqlalchemy import Column, Integer, String, Text
+from sqlalchemy.orm import relationship
+from app.core.database import Base
+from .auditable import Auditable
+
+class Rol(Base, Auditable):
+    __tablename__ = "rol"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(50), unique=True, index=True)
+    descripcion = Column(Text)
+
+    # Actualizamos la relación con Usuario
+    usuarios = relationship("Usuario", back_populates="rol")
+    permisos = relationship("Permiso", secondary="rol_permiso", back_populates="roles")
+
+--- Contenido de app/models\rol_permiso.py ---
+
+from sqlalchemy import Column, ForeignKey, Integer
+from app.core.database import Base
+from app.models.auditable import Auditable
+
+class RolPermiso(Base, Auditable):
+    __tablename__ = "rol_permiso"
+
+    rol_id = Column(Integer, ForeignKey("rol.id"), primary_key=True)
+    permiso_id = Column(Integer, ForeignKey("permiso.id"), primary_key=True)
+
+--- Contenido de app/models\usuario.py ---
+
+from sqlalchemy import Boolean, Column, Integer, String, ForeignKey
+from sqlalchemy.orm import relationship
+from app.core.database import Base
+from app.models.auditable import Auditable
+
+class Usuario(Base, Auditable):
+    __tablename__ = "usuario"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre_usuario = Column(String, unique=True, index=True)
+    hash_contrasena = Column(String)
+    esta_activo = Column(Boolean, default=True)
+    es_superusuario = Column(Boolean, default=False)
+
+    persona_id = Column(Integer, ForeignKey("persona.id"))
+    persona = relationship("Persona", back_populates="usuario")
+
+    # Cambiamos la relación con Rol
+    rol_id = Column(Integer, ForeignKey("rol.id"))
+    rol = relationship("Rol", back_populates="usuarios")
+
+--- Contenido de app/models\__init__.py ---
+
+from .rol import Rol
+from .permiso import Permiso
+from .rol_permiso import RolPermiso
+from .usuario import Usuario
+from .persona import Persona
+from .auditable import Auditable
+
+--- Contenido de app/schemas\auth.py ---
+
+from pydantic import BaseModel, EmailStr
+from datetime import date
+from typing import List, Optional
+
+class PermisoRespuesta(BaseModel):
+    id: int
+    nombre: str
+    descripcion: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class RolRespuesta(BaseModel):
+    id: int
+    nombre: str
+    descripcion: Optional[str] = None
+    permisos: List[PermisoRespuesta]
+
+    class Config:
+        from_attributes = True
+
+class UsuarioRespuesta(BaseModel):
+    id: int
+    nombre_usuario: str
+    esta_activo: bool
+    es_superusuario: bool
+    nombre: str
+    apellido: str
+    fecha_nacimiento: date
+    email: EmailStr
+    rol: RolRespuesta
+
+    class Config:
+        from_attributes = True
+
+class TokenRespuesta(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenPayload(BaseModel):
+    nombre_usuario: str | None = None

@@ -1,0 +1,27 @@
+# Entornos virtuales
+venv/
+myenv/
+env/
+.env
+
+# Archivos de caché de Python
+__pycache__/
+*.pyc
+
+# Archivos de log
+*.log
+
+# Archivos de base de datos local
+*.db
+*.sqlite3
+
+# Archivos de configuración local
+config.ini
+secrets.json
+
+# Directorio de dependencias
+node_modules/
+
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db
