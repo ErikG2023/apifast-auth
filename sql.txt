@@ -1,0 +1,557 @@
+-- DROP SCHEMA public;
+
+CREATE SCHEMA public AUTHORIZATION postgres;
+
+-- DROP SEQUENCE public.actividad_usuario_id_seq;
+
+CREATE SEQUENCE public.actividad_usuario_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.actividad_usuario_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.actividad_usuario_id_seq TO postgres;
+
+-- DROP SEQUENCE public.actividad_usuario_id_seq1;
+
+CREATE SEQUENCE public.actividad_usuario_id_seq1
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.actividad_usuario_id_seq1 OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.actividad_usuario_id_seq1 TO postgres;
+
+-- DROP SEQUENCE public.historial_cambios_id_seq;
+
+CREATE SEQUENCE public.historial_cambios_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.historial_cambios_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.historial_cambios_id_seq TO postgres;
+
+-- DROP SEQUENCE public.historial_cambios_id_seq1;
+
+CREATE SEQUENCE public.historial_cambios_id_seq1
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.historial_cambios_id_seq1 OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.historial_cambios_id_seq1 TO postgres;
+
+-- DROP SEQUENCE public.permiso_id_seq;
+
+CREATE SEQUENCE public.permiso_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.permiso_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.permiso_id_seq TO postgres;
+
+-- DROP SEQUENCE public.permiso_id_seq1;
+
+CREATE SEQUENCE public.permiso_id_seq1
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.permiso_id_seq1 OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.permiso_id_seq1 TO postgres;
+
+-- DROP SEQUENCE public.persona_id_seq;
+
+CREATE SEQUENCE public.persona_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.persona_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.persona_id_seq TO postgres;
+
+-- DROP SEQUENCE public.persona_id_seq1;
+
+CREATE SEQUENCE public.persona_id_seq1
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.persona_id_seq1 OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.persona_id_seq1 TO postgres;
+
+-- DROP SEQUENCE public.rol_id_seq;
+
+CREATE SEQUENCE public.rol_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.rol_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.rol_id_seq TO postgres;
+
+-- DROP SEQUENCE public.rol_id_seq1;
+
+CREATE SEQUENCE public.rol_id_seq1
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.rol_id_seq1 OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.rol_id_seq1 TO postgres;
+
+-- DROP SEQUENCE public.sesion_usuario_id_seq;
+
+CREATE SEQUENCE public.sesion_usuario_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.sesion_usuario_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.sesion_usuario_id_seq TO postgres;
+
+-- DROP SEQUENCE public.sesion_usuario_id_seq1;
+
+CREATE SEQUENCE public.sesion_usuario_id_seq1
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.sesion_usuario_id_seq1 OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.sesion_usuario_id_seq1 TO postgres;
+
+-- DROP SEQUENCE public.usuario_id_seq;
+
+CREATE SEQUENCE public.usuario_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.usuario_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.usuario_id_seq TO postgres;
+
+-- DROP SEQUENCE public.usuario_id_seq1;
+
+CREATE SEQUENCE public.usuario_id_seq1
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.usuario_id_seq1 OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.usuario_id_seq1 TO postgres;
+-- public.auditable definition
+
+-- Drop table
+
+-- DROP TABLE public.auditable;
+
+CREATE TABLE public.auditable (
+	creado_en timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+	creado_por int4 NULL,
+	actualizado_en timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+	actualizado_por int4 NULL,
+	eliminado_en timestamp NULL,
+	eliminado_por int4 NULL
+);
+
+-- Permissions
+
+ALTER TABLE public.auditable OWNER TO postgres;
+GRANT ALL ON TABLE public.auditable TO postgres;
+
+
+-- public.permiso definition
+
+-- Drop table
+
+-- DROP TABLE public.permiso;
+
+CREATE TABLE public.permiso (
+	id serial4 NOT NULL,
+	nombre varchar(50) NOT NULL,
+	descripcion text NULL,
+	CONSTRAINT permiso_nombre_key UNIQUE (nombre),
+	CONSTRAINT permiso_pkey PRIMARY KEY (id)
+)
+INHERITS (public.auditable);
+
+-- Table Triggers
+
+create trigger audit_trigger_permiso after
+insert
+    or
+delete
+    or
+update
+    on
+    public.permiso for each row execute procedure audit_trigger_func();
+
+-- Permissions
+
+ALTER TABLE public.permiso OWNER TO postgres;
+GRANT ALL ON TABLE public.permiso TO postgres;
+
+
+-- public.persona definition
+
+-- Drop table
+
+-- DROP TABLE public.persona;
+
+CREATE TABLE public.persona (
+	id serial4 NOT NULL,
+	nombre varchar(100) NOT NULL,
+	apellido varchar(100) NOT NULL,
+	fecha_nacimiento date NULL,
+	email varchar(255) NOT NULL,
+	CONSTRAINT persona_email_key UNIQUE (email),
+	CONSTRAINT persona_pkey PRIMARY KEY (id)
+)
+INHERITS (public.auditable);
+
+-- Table Triggers
+
+create trigger audit_trigger_persona after
+insert
+    or
+delete
+    or
+update
+    on
+    public.persona for each row execute procedure audit_trigger_func();
+
+-- Permissions
+
+ALTER TABLE public.persona OWNER TO postgres;
+GRANT ALL ON TABLE public.persona TO postgres;
+
+
+-- public.rol definition
+
+-- Drop table
+
+-- DROP TABLE public.rol;
+
+CREATE TABLE public.rol (
+	id serial4 NOT NULL,
+	nombre varchar(50) NOT NULL,
+	descripcion text NULL,
+	CONSTRAINT rol_nombre_key UNIQUE (nombre),
+	CONSTRAINT rol_pkey PRIMARY KEY (id)
+)
+INHERITS (public.auditable);
+
+-- Table Triggers
+
+create trigger audit_trigger_rol after
+insert
+    or
+delete
+    or
+update
+    on
+    public.rol for each row execute procedure audit_trigger_func();
+
+-- Permissions
+
+ALTER TABLE public.rol OWNER TO postgres;
+GRANT ALL ON TABLE public.rol TO postgres;
+
+
+-- public.rol_permiso definition
+
+-- Drop table
+
+-- DROP TABLE public.rol_permiso;
+
+CREATE TABLE public.rol_permiso (
+	rol_id int4 NOT NULL,
+	permiso_id int4 NOT NULL,
+	CONSTRAINT rol_permiso_pkey PRIMARY KEY (rol_id, permiso_id),
+	CONSTRAINT rol_permiso_permiso_id_fkey FOREIGN KEY (permiso_id) REFERENCES public.permiso(id),
+	CONSTRAINT rol_permiso_rol_id_fkey FOREIGN KEY (rol_id) REFERENCES public.rol(id)
+)
+INHERITS (public.auditable);
+
+-- Permissions
+
+ALTER TABLE public.rol_permiso OWNER TO postgres;
+GRANT ALL ON TABLE public.rol_permiso TO postgres;
+
+
+-- public.usuario definition
+
+-- Drop table
+
+-- DROP TABLE public.usuario;
+
+CREATE TABLE public.usuario (
+	id serial4 NOT NULL,
+	persona_id int4 NULL,
+	nombre_usuario varchar(50) NOT NULL,
+	hash_contrasena varchar(255) NOT NULL,
+	esta_activo bool NULL DEFAULT true,
+	es_superusuario bool NULL DEFAULT false,
+	rol_id int4 NOT NULL,
+	CONSTRAINT usuario_nombre_usuario_key UNIQUE (nombre_usuario),
+	CONSTRAINT usuario_pkey PRIMARY KEY (id),
+	CONSTRAINT usuario_persona_id_fkey FOREIGN KEY (persona_id) REFERENCES public.persona(id),
+	CONSTRAINT usuario_rol_id_fkey FOREIGN KEY (rol_id) REFERENCES public.rol(id)
+)
+INHERITS (public.auditable);
+CREATE INDEX idx_usuario_nombre_usuario ON public.usuario USING btree (nombre_usuario);
+CREATE INDEX idx_usuario_rol_id ON public.usuario USING btree (rol_id);
+
+-- Table Triggers
+
+create trigger audit_trigger_usuario after
+insert
+    or
+delete
+    or
+update
+    on
+    public.usuario for each row execute procedure audit_trigger_func();
+
+-- Permissions
+
+ALTER TABLE public.usuario OWNER TO postgres;
+GRANT ALL ON TABLE public.usuario TO postgres;
+
+
+-- public.actividad_usuario definition
+
+-- Drop table
+
+-- DROP TABLE public.actividad_usuario;
+
+CREATE TABLE public.actividad_usuario (
+	id serial4 NOT NULL,
+	usuario_id int4 NULL,
+	tipo_actividad varchar(50) NOT NULL,
+	descripcion text NULL,
+	fecha_hora timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+	direccion_ip varchar(45) NULL,
+	agente_usuario text NULL,
+	CONSTRAINT actividad_usuario_pkey PRIMARY KEY (id),
+	CONSTRAINT actividad_usuario_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuario(id)
+);
+CREATE INDEX idx_actividad_usuario_usuario_id ON public.actividad_usuario USING btree (usuario_id);
+
+-- Permissions
+
+ALTER TABLE public.actividad_usuario OWNER TO postgres;
+GRANT ALL ON TABLE public.actividad_usuario TO postgres;
+
+
+-- public.historial_cambios definition
+
+-- Drop table
+
+-- DROP TABLE public.historial_cambios;
+
+CREATE TABLE public.historial_cambios (
+	id serial4 NOT NULL,
+	nombre_tabla varchar(50) NOT NULL,
+	id_registro int4 NOT NULL,
+	nombre_campo varchar(50) NOT NULL,
+	valor_antiguo text NULL,
+	valor_nuevo text NULL,
+	fecha_cambio timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+	cambiado_por int4 NULL,
+	CONSTRAINT historial_cambios_pkey PRIMARY KEY (id),
+	CONSTRAINT historial_cambios_cambiado_por_fkey FOREIGN KEY (cambiado_por) REFERENCES public.usuario(id)
+);
+
+-- Permissions
+
+ALTER TABLE public.historial_cambios OWNER TO postgres;
+GRANT ALL ON TABLE public.historial_cambios TO postgres;
+
+
+-- public.sesion_usuario definition
+
+-- Drop table
+
+-- DROP TABLE public.sesion_usuario;
+
+CREATE TABLE public.sesion_usuario (
+	id serial4 NOT NULL,
+	usuario_id int4 NULL,
+	token_sesion varchar(255) NOT NULL,
+	direccion_ip varchar(45) NULL,
+	agente_usuario text NULL,
+	inicio_sesion timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+	fin_sesion timestamp NULL,
+	CONSTRAINT sesion_usuario_pkey PRIMARY KEY (id),
+	CONSTRAINT sesion_usuario_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuario(id)
+);
+CREATE INDEX idx_sesion_usuario_token ON public.sesion_usuario USING btree (token_sesion);
+CREATE INDEX idx_sesion_usuario_usuario_id ON public.sesion_usuario USING btree (usuario_id);
+
+-- Permissions
+
+ALTER TABLE public.sesion_usuario OWNER TO postgres;
+GRANT ALL ON TABLE public.sesion_usuario TO postgres;
+
+
+
+CREATE OR REPLACE FUNCTION public.audit_trigger_func()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+    old_row json;
+    new_row json;
+    r RECORD;
+BEGIN
+    IF (TG_OP = 'UPDATE') THEN
+        old_row = row_to_json(OLD);
+        new_row = row_to_json(NEW);
+        FOR r IN SELECT * FROM jsonb_each_text(old_row::jsonb) LOOP
+            IF new_row->>r.key <> old_row->>r.key THEN
+                INSERT INTO historial_cambios (
+                    nombre_tabla, 
+                    id_registro, 
+                    nombre_campo, 
+                    valor_antiguo, 
+                    valor_nuevo, 
+                    fecha_cambio, 
+                    cambiado_por
+                ) VALUES (
+                    TG_TABLE_NAME::TEXT,
+                    (new_row->>'id')::integer,
+                    r.key,
+                    old_row->>r.key,
+                    new_row->>r.key,
+                    now(),
+                    (new_row->>'actualizado_por')::integer
+                );
+            END IF;
+        END LOOP;
+    ELSIF (TG_OP = 'DELETE') THEN
+        old_row = row_to_json(OLD);
+        INSERT INTO historial_cambios (
+            nombre_tabla, 
+            id_registro, 
+            nombre_campo, 
+            valor_antiguo, 
+            valor_nuevo, 
+            fecha_cambio, 
+            cambiado_por
+        ) VALUES (
+            TG_TABLE_NAME::TEXT,
+            (old_row->>'id')::integer,
+            'registro_eliminado',
+            'registro_eliminado',
+            NULL,
+            now(),
+            (old_row->>'eliminado_por')::integer
+        );
+    ELSIF (TG_OP = 'INSERT') THEN
+        new_row = row_to_json(NEW);
+        INSERT INTO historial_cambios (
+            nombre_tabla, 
+            id_registro, 
+            nombre_campo, 
+            valor_antiguo, 
+            valor_nuevo, 
+            fecha_cambio, 
+            cambiado_por
+        ) VALUES (
+            TG_TABLE_NAME::TEXT,
+            (new_row->>'id')::integer,
+            'nuevo_registro',
+            'nuevo_registro',
+            'nuevo_registro',
+            now(),
+            (new_row->>'creado_por')::integer
+        );
+    END IF;
+    RETURN NULL;
+END;
+$function$
+;
+
+-- Permissions
+
+ALTER FUNCTION public.audit_trigger_func() OWNER TO postgres;
+GRANT ALL ON FUNCTION public.audit_trigger_func() TO public;
+GRANT ALL ON FUNCTION public.audit_trigger_func() TO postgres;
+
+
+-- Permissions
+
+GRANT ALL ON SCHEMA public TO postgres;
