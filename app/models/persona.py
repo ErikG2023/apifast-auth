@@ -11,7 +11,7 @@ class Persona(Base, Auditable):
     apellido = Column(String, index=True)
     fecha_nacimiento = Column(Date)
     email = Column(String, unique=True, index=True)
+    rut = Column(String(12), unique=True, index=True)
     
     # Relación con Usuario
     usuario = relationship("Usuario", back_populates="persona", uselist=False)
-

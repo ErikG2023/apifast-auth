@@ -32,6 +32,36 @@ CREATE SEQUENCE public.actividad_usuario_id_seq1
 ALTER SEQUENCE public.actividad_usuario_id_seq1 OWNER TO postgres;
 GRANT ALL ON SEQUENCE public.actividad_usuario_id_seq1 TO postgres;
 
+-- DROP SEQUENCE public.ciudad_id_seq;
+
+CREATE SEQUENCE public.ciudad_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.ciudad_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.ciudad_id_seq TO postgres;
+
+-- DROP SEQUENCE public.direccion_id_seq;
+
+CREATE SEQUENCE public.direccion_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.direccion_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.direccion_id_seq TO postgres;
+
 -- DROP SEQUENCE public.historial_cambios_id_seq;
 
 CREATE SEQUENCE public.historial_cambios_id_seq
@@ -121,6 +151,21 @@ CREATE SEQUENCE public.persona_id_seq1
 
 ALTER SEQUENCE public.persona_id_seq1 OWNER TO postgres;
 GRANT ALL ON SEQUENCE public.persona_id_seq1 TO postgres;
+
+-- DROP SEQUENCE public.region_id_seq;
+
+CREATE SEQUENCE public.region_id_seq
+	INCREMENT BY 1
+	MINVALUE 1
+	MAXVALUE 2147483647
+	START 1
+	CACHE 1
+	NO CYCLE;
+
+-- Permissions
+
+ALTER SEQUENCE public.region_id_seq OWNER TO postgres;
+GRANT ALL ON SEQUENCE public.region_id_seq TO postgres;
 
 -- DROP SEQUENCE public.rol_id_seq;
 
@@ -276,10 +321,17 @@ CREATE TABLE public.persona (
 	apellido varchar(100) NOT NULL,
 	fecha_nacimiento date NULL,
 	email varchar(255) NOT NULL,
+	rut varchar(12) NULL, -- Número de identificación personal (RUT)
 	CONSTRAINT persona_email_key UNIQUE (email),
-	CONSTRAINT persona_pkey PRIMARY KEY (id)
+	CONSTRAINT persona_pkey PRIMARY KEY (id),
+	CONSTRAINT persona_rut_key UNIQUE (rut)
 )
 INHERITS (public.auditable);
+CREATE INDEX idx_persona_rut ON public.persona USING btree (rut);
+
+-- Column comments
+
+COMMENT ON COLUMN public.persona.rut IS 'Número de identificación personal (RUT)';
 
 -- Table Triggers
 
@@ -296,6 +348,39 @@ update
 
 ALTER TABLE public.persona OWNER TO postgres;
 GRANT ALL ON TABLE public.persona TO postgres;
+
+
+-- public.region definition
+
+-- Drop table
+
+-- DROP TABLE public.region;
+
+CREATE TABLE public.region (
+	id serial4 NOT NULL,
+	nombre varchar(100) NOT NULL,
+	codigo varchar(50) NOT NULL,
+	CONSTRAINT region_codigo_key UNIQUE (codigo),
+	CONSTRAINT region_pkey PRIMARY KEY (id)
+)
+INHERITS (public.auditable);
+CREATE INDEX idx_region_codigo ON public.region USING btree (codigo);
+
+-- Table Triggers
+
+create trigger audit_trigger_region after
+insert
+    or
+delete
+    or
+update
+    on
+    public.region for each row execute procedure audit_trigger_func();
+
+-- Permissions
+
+ALTER TABLE public.region OWNER TO postgres;
+GRANT ALL ON TABLE public.region TO postgres;
 
 
 -- public.rol definition
@@ -405,6 +490,7 @@ CREATE TABLE public.actividad_usuario (
 	fecha_hora timestamp NULL DEFAULT CURRENT_TIMESTAMP,
 	direccion_ip varchar(45) NULL,
 	agente_usuario text NULL,
+	endpoint varchar(255) NULL,
 	CONSTRAINT actividad_usuario_pkey PRIMARY KEY (id),
 	CONSTRAINT actividad_usuario_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuario(id)
 );
@@ -414,6 +500,81 @@ CREATE INDEX idx_actividad_usuario_usuario_id ON public.actividad_usuario USING 
 
 ALTER TABLE public.actividad_usuario OWNER TO postgres;
 GRANT ALL ON TABLE public.actividad_usuario TO postgres;
+
+
+-- public.ciudad definition
+
+-- Drop table
+
+-- DROP TABLE public.ciudad;
+
+CREATE TABLE public.ciudad (
+	id serial4 NOT NULL,
+	region_id int4 NOT NULL,
+	nombre varchar(100) NOT NULL,
+	codigo varchar(50) NOT NULL,
+	CONSTRAINT ciudad_codigo_key UNIQUE (codigo),
+	CONSTRAINT ciudad_pkey PRIMARY KEY (id),
+	CONSTRAINT ciudad_region_id_fkey FOREIGN KEY (region_id) REFERENCES public.region(id)
+)
+INHERITS (public.auditable);
+CREATE INDEX idx_ciudad_codigo ON public.ciudad USING btree (codigo);
+CREATE INDEX idx_ciudad_region_id ON public.ciudad USING btree (region_id);
+
+-- Table Triggers
+
+create trigger audit_trigger_ciudad after
+insert
+    or
+delete
+    or
+update
+    on
+    public.ciudad for each row execute procedure audit_trigger_func();
+
+-- Permissions
+
+ALTER TABLE public.ciudad OWNER TO postgres;
+GRANT ALL ON TABLE public.ciudad TO postgres;
+
+
+-- public.direccion definition
+
+-- Drop table
+
+-- DROP TABLE public.direccion;
+
+CREATE TABLE public.direccion (
+	id serial4 NOT NULL,
+	persona_id int4 NOT NULL,
+	ciudad_id int4 NOT NULL,
+	calle varchar(255) NOT NULL,
+	numero varchar(50) NOT NULL,
+	departamento varchar(50) NULL,
+	codigo_postal varchar(20) NULL,
+	CONSTRAINT direccion_pkey PRIMARY KEY (id),
+	CONSTRAINT direccion_ciudad_id_fkey FOREIGN KEY (ciudad_id) REFERENCES public.ciudad(id),
+	CONSTRAINT direccion_persona_id_fkey FOREIGN KEY (persona_id) REFERENCES public.persona(id)
+)
+INHERITS (public.auditable);
+CREATE INDEX idx_direccion_ciudad_id ON public.direccion USING btree (ciudad_id);
+CREATE INDEX idx_direccion_persona_id ON public.direccion USING btree (persona_id);
+
+-- Table Triggers
+
+create trigger audit_trigger_direccion after
+insert
+    or
+delete
+    or
+update
+    on
+    public.direccion for each row execute procedure audit_trigger_func();
+
+-- Permissions
+
+ALTER TABLE public.direccion OWNER TO postgres;
+GRANT ALL ON TABLE public.direccion TO postgres;
 
 
 -- public.historial_cambios definition

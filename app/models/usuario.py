@@ -18,3 +18,5 @@ class Usuario(Base, Auditable):
     # Cambiamos la relación con Rol
     rol_id = Column(Integer, ForeignKey("rol.id"))
     rol = relationship("Rol", back_populates="usuarios")
+    
+    sesiones = relationship("SesionUsuario", back_populates="usuario")

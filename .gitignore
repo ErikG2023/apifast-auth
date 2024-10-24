@@ -4,6 +4,8 @@ myenv/
 env/
 .env
 
+contenido_combinado.txt
+
 # Archivos de caché de Python
 __pycache__/
 *.pyc

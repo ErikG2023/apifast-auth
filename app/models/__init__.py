@@ -4,3 +4,4 @@ from .rol_permiso import RolPermiso
 from .usuario import Usuario
 from .persona import Persona
 from .auditable import Auditable
+from .sesion_usuario import SesionUsuario

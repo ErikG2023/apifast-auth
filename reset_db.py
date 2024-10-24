@@ -14,9 +14,39 @@ engine = create_engine(settings.DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 db = SessionLocal()
 
+def calcular_digito_verificador(numero_rut: str) -> str:
+    """
+    Calcula el dígito verificador de un RUT chileno.
+    """
+    serie = [2, 3, 4, 5, 6, 7]
+    suma = 0
+    
+    for i, digit in enumerate(reversed(numero_rut)):
+        suma += int(digit) * serie[i % len(serie)]
+    
+    resto = suma % 11
+    dv = 11 - resto
+    
+    if dv == 11:
+        return '0'
+    elif dv == 10:
+        return 'K'
+    else:
+        return str(dv)
+
+def generar_rut_valido() -> str:
+    """
+    Genera un RUT chileno válido aleatorio.
+    """
+    # Generar número de RUT aleatorio entre 7.000.000 y 25.000.000
+    numero = random.randint(7000000, 25000000)
+    numero_str = str(numero)
+    dv = calcular_digito_verificador(numero_str)
+    return f"{numero_str}-{dv}"
+
 def reset_database():
     # Lista de tablas en orden de eliminación
-    tables = ['usuario', 'rol_permiso', 'persona', 'rol', 'permiso']
+    tables = ['sesion_usuario','usuario', 'rol_permiso', 'persona', 'rol', 'permiso']
     
     # Desactivar temporalmente las restricciones de clave foránea
     db.execute(text("SET CONSTRAINTS ALL DEFERRED"))
@@ -127,6 +157,7 @@ def reset_database():
         apellido="Administrador",
         fecha_nacimiento=datetime(1991, 8, 27),
         email="superadmin@gmail.com",
+        rut="11111111-1",  # RUT fijo para el admin
         creado_en=now,
         actualizado_en=now,
         creado_por=None,
@@ -144,7 +175,7 @@ def reset_database():
         esta_activo=True,
         es_superusuario=True,
         persona_id=admin_persona.id,
-        rol_id=admin_rol.id,  # Asignamos directamente el rol_id
+        rol_id=admin_rol.id,
         creado_en=now,
         actualizado_en=now,
         creado_por=None,
@@ -161,13 +192,24 @@ def agregar_personas_adicionales():
     fake = Faker()
     now = datetime.utcnow()
     
+    # Mantener un conjunto de RUTs generados para evitar duplicados
+    ruts_generados = set()
+    
     personas_adicionales = []
     for _ in range(30):
+        # Generar un RUT único
+        while True:
+            rut = generar_rut_valido()
+            if rut not in ruts_generados:
+                ruts_generados.add(rut)
+                break
+        
         persona = Persona(
             nombre=fake.first_name(),
             apellido=fake.last_name(),
             fecha_nacimiento=fake.date_of_birth(minimum_age=18, maximum_age=80),
             email=fake.email(),
+            rut=rut,
             creado_en=now,
             actualizado_en=now,
             creado_por=None,
